@@ -1,107 +1,229 @@
+import 'package:get/get.dart';
 import '../models/painting.dart';
 import '../models/user.dart';
+import '../services/supabase_service.dart';
 
-class DataService {
-  static List<Painting> getPaintings() {
-    return [
-      Painting(
-        id: '1',
-        title: 'Sunset Dreams',
-        artist: 'Elena Rodriguez',
-        description: 'A breathtaking oil painting capturing the essence of a perfect sunset over rolling hills. The warm golden and orange hues blend seamlessly with deep purples and blues, creating a sense of tranquility and wonder.',
-        price: 1250.0,
-        imageUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800',
-        category: 'Landscape',
-        isTrending: true,
-        artistBio: 'Elena Rodriguez is a contemporary artist known for her vibrant landscape paintings.',
-        additionalImages: [
-          'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400',
-          'https://images.unsplash.com/photo-1578321272176-b7bbc0679853?w=400',
-        ],
-      ),
-      Painting(
-        id: '2',
-        title: 'Urban Symphony',
-        artist: 'Marcus Chen',
-        description: 'An abstract interpretation of city life, featuring bold brushstrokes and a dynamic color palette that represents the energy and movement of urban environments.',
-        price: 890.0,
-        imageUrl: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=800',
-        category: 'Abstract',
-        isTrending: true,
-        artistBio: 'Marcus Chen specializes in abstract art that captures the essence of modern life.',
-      ),
-      Painting(
-        id: '3',
-        title: 'Ocean Depths',
-        artist: 'Sarah Williams',
-        description: 'A mesmerizing seascape that explores the mysterious depths of the ocean through layers of blue and green, creating a sense of infinite depth and movement.',
-        price: 1450.0,
-        imageUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800',
-        category: 'Seascape',
-        artistBio: 'Sarah Williams is renowned for her oceanic paintings that capture the power and beauty of the sea.',
-      ),
-      Painting(
-        id: '4',
-        title: 'Forest Whispers',
-        artist: 'David Thompson',
-        description: 'A serene forest scene painted with incredible detail, showcasing the interplay of light and shadow through ancient trees.',
-        price: 1100.0,
-        imageUrl: 'https://images.unsplash.com/photo-1578321272176-b7bbc0679853?w=800',
-        category: 'Landscape',
-        isTrending: false,
-        artistBio: 'David Thompson focuses on realistic nature paintings with exceptional attention to detail.',
-      ),
-      Painting(
-        id: '5',
-        title: 'Portrait of Grace',
-        artist: 'Isabella Martinez',
-        description: 'A classical portrait demonstrating masterful technique in capturing human emotion and character through oil painting.',
-        price: 2100.0,
-        imageUrl: 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800',
-        category: 'Portrait',
-        artistBio: 'Isabella Martinez is a portrait artist with classical training in European techniques.',
-      ),
-      Painting(
-        id: '6',
-        title: 'Mountain Majesty',
-        artist: 'Robert Kim',
-        description: 'A powerful mountain landscape showcasing snow-capped peaks against a dramatic sky, painted with bold, confident strokes.',
-        price: 1350.0,
-        imageUrl: 'https://images.unsplash.com/photo-1541961017774-22349e4a1262?w=800',
-        category: 'Landscape',
-        isTrending: true,
-        artistBio: 'Robert Kim specializes in dramatic landscape paintings of natural wonders.',
-      ),
-    ];
+class DataService extends GetxController {
+  final SupabaseService _supabaseService = Get.find();
+  
+  final RxList<Painting> paintings = <Painting>[].obs;
+  final RxList<String> categories = <String>[].obs;
+  final RxBool isLoading = false.obs;
+  final RxString error = ''.obs;
+  
+  @override
+  void onInit() {
+    super.onInit();
+    fetchPaintings();
+    fetchCategories();
   }
   
-  static List<String> getCategories() {
-    return ['All', 'Landscape', 'Abstract', 'Portrait', 'Seascape', 'Still Life'];
+  Future<void> fetchPaintings() async {
+    try {
+      isLoading.value = true;
+      error.value = '';
+      
+      final response = await _supabaseService.fetchData(
+        'paintings',
+        orderBy: 'created_at',
+        ascending: false,
+      );
+      
+      paintings.value = response
+          .map((item) => Painting.fromJson(item))
+          .toList();
+    } catch (e) {
+      error.value = 'Failed to fetch paintings: $e';
+      print('Error fetching paintings: $e');
+    } finally {
+      isLoading.value = false;
+    }
   }
   
-  static User getSampleUser() {
-    return User(
-      id: 'user1',
-      name: 'John Doe',
-      email: 'john.doe@email.com',
-      shippingAddress: '123 Art Street, Creative City, AC 12345',
-      paymentInfo: '**** **** **** 1234',
-      orderHistory: [
-        Order(
-          id: 'order1',
-          date: DateTime.now().subtract(Duration(days: 7)),
-          totalAmount: 1250.0,
-          status: 'Delivered',
-          items: ['Sunset Dreams'],
-        ),
-        Order(
-          id: 'order2',
-          date: DateTime.now().subtract(Duration(days: 15)),
-          totalAmount: 890.0,
-          status: 'Shipped',
-          items: ['Urban Symphony'],
-        ),
-      ],
-    );
+  Future<void> fetchCategories() async {
+    try {
+      final response = await _supabaseService.fetchData('categories');
+      
+      List<String> categoryList = ['All'];
+      categoryList.addAll(
+        response.map((item) => item['name'] as String).toList(),
+      );
+      
+      categories.value = categoryList;
+    } catch (e) {
+      // Fallback categories if database fetch fails
+      categories.value = ['All', 'Landscape', 'Abstract', 'Portrait', 'Seascape', 'Still Life'];
+      print('Error fetching categories: $e');
+    }
+  }
+  
+  Future<void> addPainting(Painting painting) async {
+    try {
+      await _supabaseService.insertData('paintings', painting.toJson());
+      await fetchPaintings(); // Refresh list
+    } catch (e) {
+      error.value = 'Failed to add painting: $e';
+      print('Error adding painting: $e');
+    }
+  }
+  
+  Future<void> updatePainting(String id, Painting painting) async {
+    try {
+      await _supabaseService.updateData('paintings', id, painting.toJson());
+      await fetchPaintings(); // Refresh list
+    } catch (e) {
+      error.value = 'Failed to update painting: $e';
+      print('Error updating painting: $e');
+    }
+  }
+  
+  Future<void> deletePainting(String id) async {
+    try {
+      await _supabaseService.deleteData('paintings', id);
+      await fetchPaintings(); // Refresh list
+    } catch (e) {
+      error.value = 'Failed to delete painting: $e';
+      print('Error deleting painting: $e');
+    }
+  }
+  
+  Future<Painting?> getPaintingById(String id) async {
+    try {
+      final response = await _supabaseService.fetchById('paintings', id);
+      if (response != null) {
+        return Painting.fromJson(response);
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching painting by id: $e');
+      return null;
+    }
+  }
+  
+  Future<User?> getUserProfile(String userId) async {
+    try {
+      final response = await _supabaseService.fetchUserProfile(userId);
+      if (response != null) {
+        // Fetch user orders
+        final orders = await _supabaseService.fetchUserOrders(userId);
+        final orderHistory = orders.map((order) => Order.fromJson(order)).toList();
+        
+        return User(
+          id: response['id'],
+          name: response['name'],
+          email: response['email'],
+          shippingAddress: response['shipping_address'],
+          paymentInfo: response['payment_info'],
+          orderHistory: orderHistory,
+        );
+      }
+      return null;
+    } catch (e) {
+      print('Error fetching user profile: $e');
+      return null;
+    }
+  }
+  
+  Future<void> updateUserProfile(String userId, Map<String, dynamic> data) async {
+    try {
+      await _supabaseService.updateData('user_profiles', userId, data);
+    } catch (e) {
+      error.value = 'Failed to update profile: $e';
+      print('Error updating user profile: $e');
+    }
+  }
+  
+  Future<void> addToCart(String userId, String paintingId, int quantity) async {
+    try {
+      // Check if item already exists in cart
+      final existingItems = await _supabaseService.fetchData('cart_items');
+      final existingItem = existingItems.firstWhereOrNull(
+        (item) => item['user_id'] == userId && item['painting_id'] == paintingId,
+      );
+      
+      if (existingItem != null) {
+        // Update quantity
+        await _supabaseService.updateData('cart_items', existingItem['id'], {
+          'quantity': existingItem['quantity'] + quantity,
+        });
+      } else {
+        // Add new item
+        await _supabaseService.insertData('cart_items', {
+          'user_id': userId,
+          'painting_id': paintingId,
+          'quantity': quantity,
+        });
+      }
+    } catch (e) {
+      error.value = 'Failed to add to cart: $e';
+      print('Error adding to cart: $e');
+    }
+  }
+  
+  Future<void> updateCartItemQuantity(String cartItemId, int quantity) async {
+    try {
+      if (quantity <= 0) {
+        await _supabaseService.deleteData('cart_items', cartItemId);
+      } else {
+        await _supabaseService.updateData('cart_items', cartItemId, {
+          'quantity': quantity,
+        });
+      }
+    } catch (e) {
+      error.value = 'Failed to update cart: $e';
+      print('Error updating cart item: $e');
+    }
+  }
+  
+  Future<void> removeFromCart(String cartItemId) async {
+    try {
+      await _supabaseService.deleteData('cart_items', cartItemId);
+    } catch (e) {
+      error.value = 'Failed to remove from cart: $e';
+      print('Error removing from cart: $e');
+    }
+  }
+  
+  Future<void> clearUserCart(String userId) async {
+    try {
+      final cartItems = await _supabaseService.fetchData('cart_items');
+      final userCartItems = cartItems.where((item) => item['user_id'] == userId);
+      
+      for (final item in userCartItems) {
+        await _supabaseService.deleteData('cart_items', item['id']);
+      }
+    } catch (e) {
+      error.value = 'Failed to clear cart: $e';
+      print('Error clearing cart: $e');
+    }
+  }
+  
+  Future<String> createOrder(String userId, List<Map<String, dynamic>> items, double totalAmount) async {
+    try {
+      // Create order
+      final orderId = DateTime.now().millisecondsSinceEpoch.toString();
+      await _supabaseService.insertData('orders', {
+        'id': orderId,
+        'user_id': userId,
+        'total_amount': totalAmount,
+        'status': 'Processing',
+      });
+      
+      // Create order items
+      for (final item in items) {
+        await _supabaseService.insertData('order_items', {
+          'order_id': orderId,
+          'painting_id': item['painting_id'],
+          'quantity': item['quantity'],
+          'price': item['price'],
+        });
+      }
+      
+      return orderId;
+    } catch (e) {
+      error.value = 'Failed to create order: $e';
+      print('Error creating order: $e');
+      rethrow;
+    }
   }
 }

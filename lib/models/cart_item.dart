@@ -1,10 +1,12 @@
 import 'painting.dart';
 
 class CartItem {
+  final String? id;
   final Painting painting;
   int quantity;
   
   CartItem({
+    this.id,
     required this.painting,
     this.quantity = 1,
   });
@@ -13,15 +15,18 @@ class CartItem {
   
   Map<String, dynamic> toJson() {
     return {
-      'painting': painting.toJson(),
+      'id': id,
+      'painting_id': painting.id,
       'quantity': quantity,
+      'painting': painting.toJson(),
     };
   }
   
   factory CartItem.fromJson(Map<String, dynamic> json) {
     return CartItem(
-      painting: Painting.fromJson(json['painting']),
-      quantity: json['quantity'],
+      id: json['id'],
+      painting: Painting.fromJson(json['painting'] ?? json),
+      quantity: json['quantity'] ?? 1,
     );
   }
 }

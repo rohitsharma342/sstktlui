@@ -4,6 +4,8 @@ import '../screens/dashboard_screen.dart';
 import '../screens/product_details_screen.dart';
 import '../screens/cart_screen.dart';
 import '../screens/profile_screen.dart';
+import '../screens/login_screen.dart';
+import '../screens/signup_screen.dart';
 
 class AppRoutes {
   static const String splash = '/';
@@ -11,6 +13,8 @@ class AppRoutes {
   static const String productDetails = '/product-details';
   static const String cart = '/cart';
   static const String profile = '/profile';
+  static const String login = '/login';
+  static const String signup = '/signup';
   
   static List<GetPage> routes = [
     GetPage(
@@ -32,6 +36,14 @@ class AppRoutes {
     GetPage(
       name: profile,
       page: () => ProfileScreen(),
+    ),
+    GetPage(
+      name: login,
+      page: () => LoginScreen(),
+    ),
+    GetPage(
+      name: signup,
+      page: () => SignupScreen(),
     ),
   ];
 }

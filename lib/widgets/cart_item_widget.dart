@@ -25,8 +25,8 @@ class CartItemWidget extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 5,
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
             offset: Offset(0, 2),
           ),
         ],
@@ -34,7 +34,7 @@ class CartItemWidget extends StatelessWidget {
       child: Row(
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
+            borderRadius: BorderRadius.circular(8),
             child: CachedNetworkImage(
               imageUrl: item.painting.imageUrl,
               width: 80,
@@ -46,7 +46,7 @@ class CartItemWidget extends StatelessWidget {
                 color: AppColors.surface,
                 child: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    color: AppColors.primary,
                   ),
                 ),
               ),
@@ -55,7 +55,7 @@ class CartItemWidget extends StatelessWidget {
                 height: 80,
                 color: AppColors.surface,
                 child: Icon(
-                  Icons.image_not_supported,
+                  Icons.error,
                   color: AppColors.textSecondary,
                 ),
               ),
@@ -71,25 +71,75 @@ class CartItemWidget extends StatelessWidget {
                   style: AppTextStyles.body1.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
-                  maxLines: 2,
+                  maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 4),
                 Text(
                   'by ${item.painting.artist}',
                   style: AppTextStyles.body2,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 SizedBox(height: 8),
                 Text(
                   '\$${item.painting.price.toStringAsFixed(2)} each',
                   style: AppTextStyles.body2.copyWith(
-                    color: AppColors.textSecondary,
+                    color: AppColors.primary,
                   ),
                 ),
                 SizedBox(height: 8),
                 Row(
                   children: [
-                    _buildQuantitySelector(),
+                    Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: AppColors.primary),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              if (item.quantity > 1) {
+                                onQuantityChanged(item.quantity - 1);
+                              }
+                            },
+                            child: Container(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(
+                                Icons.remove,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                          Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 4,
+                            ),
+                            child: Text(
+                              item.quantity.toString(),
+                              style: AppTextStyles.body2.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => onQuantityChanged(item.quantity + 1),
+                            child: Container(
+                              padding: EdgeInsets.all(4),
+                              child: Icon(
+                                Icons.add,
+                                size: 16,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Spacer(),
                     Text(
                       '\$${item.totalPrice.toStringAsFixed(2)}',
@@ -105,75 +155,13 @@ class CartItemWidget extends StatelessWidget {
           ),
           SizedBox(width: 8),
           IconButton(
+            onPressed: onRemove,
             icon: Icon(
               Icons.delete_outline,
               color: AppColors.error,
             ),
-            onPressed: onRemove,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuantitySelector() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.surface),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildQuantityButton(
-            icon: Icons.remove,
-            onTap: () {
-              if (item.quantity > 1) {
-                onQuantityChanged(item.quantity - 1);
-              }
-            },
-            enabled: item.quantity > 1,
-          ),
-          Container(
-            width: 40,
-            height: 32,
-            child: Center(
-              child: Text(
-                item.quantity.toString(),
-                style: AppTextStyles.body2.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          _buildQuantityButton(
-            icon: Icons.add,
-            onTap: () => onQuantityChanged(item.quantity + 1),
-            enabled: true,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuantityButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    required bool enabled,
-  }) {
-    return GestureDetector(
-      onTap: enabled ? onTap : null,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: enabled ? AppColors.surface : AppColors.surface.withOpacity(0.5),
-        ),
-        child: Icon(
-          icon,
-          size: 16,
-          color: enabled ? AppColors.text : AppColors.textSecondary,
-        ),
       ),
     );
   }

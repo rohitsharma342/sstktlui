@@ -3,33 +3,35 @@ import '../models/painting.dart';
 import '../services/data_service.dart';
 
 class PaintingController extends GetxController {
-  final RxList<Painting> _allPaintings = <Painting>[].obs;
+  final DataService _dataService = Get.find<DataService>();
+  
   final RxList<Painting> _filteredPaintings = <Painting>[].obs;
   final RxString _searchQuery = ''.obs;
   final RxString _selectedCategory = 'All'.obs;
-  final RxList<String> _categories = <String>[].obs;
   
-  List<Painting> get allPaintings => _allPaintings;
+  List<Painting> get allPaintings => _dataService.paintings;
   List<Painting> get filteredPaintings => _filteredPaintings;
-  List<Painting> get trendingPaintings => _allPaintings.where((p) => p.isTrending).toList();
+  List<Painting> get trendingPaintings => _dataService.paintings.where((p) => p.isTrending).toList();
   String get searchQuery => _searchQuery.value;
   String get selectedCategory => _selectedCategory.value;
-  List<String> get categories => _categories;
+  List<String> get categories => _dataService.categories;
+  bool get isLoading => _dataService.isLoading.value;
+  String get error => _dataService.error.value;
   
   @override
   void onInit() {
     super.onInit();
-    loadPaintings();
-    loadCategories();
+    _initializeFilters();
   }
   
-  void loadPaintings() {
-    _allPaintings.value = DataService.getPaintings();
-    _filteredPaintings.value = _allPaintings;
+  void _initializeFilters() {
+    // Listen to changes in the data service paintings list
+    ever(_dataService.paintings, (_) => _applyFilters());
+    _filteredPaintings.value = _dataService.paintings;
   }
   
-  void loadCategories() {
-    _categories.value = DataService.getCategories();
+  Future<void> refreshPaintings() async {
+    await _dataService.fetchPaintings();
   }
   
   void searchPaintings(String query) {
@@ -43,7 +45,7 @@ class PaintingController extends GetxController {
   }
   
   void _applyFilters() {
-    List<Painting> filtered = _allPaintings;
+    List<Painting> filtered = List.from(_dataService.paintings);
     
     if (_selectedCategory.value != 'All') {
       filtered = filtered.where((p) => p.category == _selectedCategory.value).toList();
@@ -60,11 +62,19 @@ class PaintingController extends GetxController {
     _filteredPaintings.value = filtered;
   }
   
-  Painting? getPaintingById(String id) {
+  Future<Painting?> getPaintingById(String id) async {
+    // First check in memory
     try {
-      return _allPaintings.firstWhere((p) => p.id == id);
+      return _dataService.paintings.firstWhere((p) => p.id == id);
     } catch (e) {
-      return null;
+      // If not found in memory, fetch from database
+      return await _dataService.getPaintingById(id);
     }
+  }
+  
+  void clearFilters() {
+    _searchQuery.value = '';
+    _selectedCategory.value = 'All';
+    _applyFilters();
   }
 }

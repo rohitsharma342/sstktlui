@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/user_controller.dart';
+import '../controllers/auth_controller.dart';
 import '../utils/constants.dart';
+import '../utils/routes.dart';
 import '../models/user.dart';
 
 class ProfileScreen extends StatelessWidget {
   final UserController userController = Get.find();
+  final AuthController authController = Get.find();
   final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   final TextEditingController paymentController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
@@ -25,133 +27,60 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
       body: Obx(() {
-        if (!userController.isLoggedIn) {
-          return _buildLoginForm();
+        if (!authController.isLoggedIn.value) {
+          return _buildNotLoggedIn();
         }
+        
+        if (userController.isLoading.value) {
+          return Center(child: CircularProgressIndicator());
+        }
+        
         return _buildProfileContent();
       }),
     );
   }
-
-  Widget _buildLoginForm() {
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(AppDimensions.padding),
+  
+  Widget _buildNotLoggedIn() {
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(height: 20),
-          Center(
-            child: Icon(
-              Icons.account_circle,
-              size: 100,
-              color: AppColors.primary,
-            ),
+          Icon(
+            Icons.account_circle_outlined,
+            size: 100,
+            color: AppColors.textSecondary,
           ),
           SizedBox(height: 20),
-          Center(
-            child: Text(
-              'Welcome to SSTKTLUI',
-              style: AppTextStyles.heading1,
-              textAlign: TextAlign.center,
+          Text(
+            'Please Login',
+            style: AppTextStyles.heading2.copyWith(
+              color: AppColors.textSecondary,
             ),
           ),
           SizedBox(height: 8),
-          Center(
-            child: Text(
-              'Please login to access your profile and order history',
-              style: AppTextStyles.body1.copyWith(
-                color: AppColors.textSecondary,
+          Text(
+            'You need to login to access your profile',
+            style: AppTextStyles.body1.copyWith(
+              color: AppColors.textSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 30),
+          ElevatedButton(
+            onPressed: () => Get.toNamed(AppRoutes.login),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
               ),
-              textAlign: TextAlign.center,
             ),
-          ),
-          SizedBox(height: 40),
-          Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: emailController,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    prefixIcon: Icon(Icons.email_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your email';
-                    }
-                    if (!userController.isValidEmail(value)) {
-                      return 'Please enter a valid email';
-                    }
-                    return null;
-                  },
-                ),
-                SizedBox(height: 16),
-                TextFormField(
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    prefixIcon: Icon(Icons.lock_outlined),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
-                    ),
-                    filled: true,
-                    fillColor: AppColors.surface,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter your password';
-                    }
-                    if (value.length < 6) {
-                      return 'Password must be at least 6 characters';
-                    }
-                    return null;
-                  },
-                ),
-                SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_formKey.currentState!.validate()) {
-                        userController.login(
-                          emailController.text,
-                          passwordController.text,
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
-                      ),
-                    ),
-                    child: Text(
-                      'Login',
-                      style: AppTextStyles.body1.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 20),
-          Center(
             child: Text(
-              'Demo Credentials: Any email and password',
-              style: AppTextStyles.caption.copyWith(
-                fontStyle: FontStyle.italic,
+              'Login',
+              style: AppTextStyles.body1.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -161,7 +90,22 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildProfileContent() {
-    final user = userController.user!;
+    final user = userController.user;
+    if (user == null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Failed to load profile'),
+            ElevatedButton(
+              onPressed: () => userController.refreshProfile(),
+              child: Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+    
     nameController.text = user.name;
     emailController.text = user.email;
     addressController.text = user.shippingAddress ?? '';
@@ -197,7 +141,7 @@ class ProfileScreen extends StatelessWidget {
             radius: 40,
             backgroundColor: AppColors.primary,
             child: Text(
-              user.name[0].toUpperCase(),
+              user.name.isNotEmpty ? user.name[0].toUpperCase() : 'U',
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -238,57 +182,85 @@ class ProfileScreen extends StatelessWidget {
           style: AppTextStyles.heading2,
         ),
         SizedBox(height: 16),
-        _buildTextField(
-          controller: nameController,
-          label: 'Full Name',
-          icon: Icons.person_outlined,
-        ),
-        SizedBox(height: 16),
-        _buildTextField(
-          controller: emailController,
-          label: 'Email',
-          icon: Icons.email_outlined,
-        ),
-        SizedBox(height: 16),
-        _buildTextField(
-          controller: addressController,
-          label: 'Shipping Address',
-          icon: Icons.location_on_outlined,
-          maxLines: 3,
-        ),
-        SizedBox(height: 16),
-        _buildTextField(
-          controller: paymentController,
-          label: 'Payment Info',
-          icon: Icons.credit_card_outlined,
-        ),
-        SizedBox(height: 20),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: () {
-              userController.updateProfile(
-                name: nameController.text,
-                email: emailController.text,
-                shippingAddress: addressController.text,
-                paymentInfo: paymentController.text,
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              padding: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
+        Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              _buildTextField(
+                controller: nameController,
+                label: 'Full Name',
+                icon: Icons.person_outlined,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your name';
+                  }
+                  return null;
+                },
               ),
-            ),
-            child: Text(
-              'Save Changes',
-              style: AppTextStyles.body1.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
+              SizedBox(height: 16),
+              _buildTextField(
+                controller: emailController,
+                label: 'Email',
+                icon: Icons.email_outlined,
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter your email';
+                  }
+                  if (!userController.isValidEmail(value)) {
+                    return 'Please enter a valid email';
+                  }
+                  return null;
+                },
               ),
-            ),
+              SizedBox(height: 16),
+              _buildTextField(
+                controller: addressController,
+                label: 'Shipping Address',
+                icon: Icons.location_on_outlined,
+                maxLines: 3,
+              ),
+              SizedBox(height: 16),
+              _buildTextField(
+                controller: paymentController,
+                label: 'Payment Info',
+                icon: Icons.credit_card_outlined,
+              ),
+              SizedBox(height: 20),
+              Obx(() => SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: userController.isLoading.value
+                          ? null
+                          : () {
+                              if (_formKey.currentState!.validate()) {
+                                userController.updateProfile(
+                                  name: nameController.text,
+                                  email: emailController.text,
+                                  shippingAddress: addressController.text,
+                                  paymentInfo: paymentController.text,
+                                );
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppDimensions.borderRadius),
+                        ),
+                      ),
+                      child: userController.isLoading.value
+                          ? CircularProgressIndicator(color: Colors.white)
+                          : Text(
+                              'Save Changes',
+                              style: AppTextStyles.body1.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                    ),
+                  )),
+            ],
           ),
         ),
       ],
@@ -300,10 +272,12 @@ class ProfileScreen extends StatelessWidget {
     required String label,
     required IconData icon,
     int maxLines = 1,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       maxLines: maxLines,
+      validator: validator,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon),
@@ -426,7 +400,7 @@ class ProfileScreen extends StatelessWidget {
                 TextButton(
                   onPressed: () {
                     Get.back();
-                    userController.logout();
+                    authController.signOut();
                   },
                   child: Text(
                     'Logout',
