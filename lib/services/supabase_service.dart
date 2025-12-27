@@ -75,7 +75,7 @@ class SupabaseService {
   // Database CRUD operations
   Future<List<Map<String, dynamic>>> fetchData(String table, {String? orderBy, bool ascending = true}) async {
     try {
-      var query = supabase.from(table).select();
+      dynamic query = supabase.from(table).select();
       
       if (orderBy != null) {
         query = query.order(orderBy, ascending: ascending);
